@@ -1,4 +1,9 @@
 #!/usr/bin/env python3
+"""
+Fetch Tradier paper (sandbox) account, positions, and orders; write snapshot to temp file;
+invoke ingest_broker_snapshot.py to load into the quant database.
+Uses TRADIER_PAPER_BASE_URL / TRADIER_SANDBOX_BASE_URL (default sandbox.tradier.com) and token from env.
+"""
 import json
 import os
 import subprocess
@@ -130,18 +135,13 @@ def main():
 
         ingest_py = os.path.join(os.path.dirname(__file__), "ingest_broker_snapshot.py")
         cmd = [
-        "python3",
-        ingest_py,
-        "--provider",
-        "tradier",
-        "--account-id",
-        TRADIER_ACCOUNT_ID,
-        "--mode",
-        "paper",
-        "--snapshot",
-        tmp,
-        "--db-url",
-        DATABASE_URL,
+            "python3",
+            ingest_py,
+            "--provider", "tradier",
+            "--account-id", TRADIER_ACCOUNT_ID,
+            "--mode", "paper",
+            "--snapshot", tmp,
+            "--db-url", DATABASE_URL,
         ]
         subprocess.run(cmd, check=True)
         print("Tradier paper pull+ingest complete")
