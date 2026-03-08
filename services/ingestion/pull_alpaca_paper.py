@@ -1,4 +1,9 @@
 #!/usr/bin/env python3
+"""
+Fetch Alpaca paper account, positions, and orders; write snapshot to temp file;
+invoke ingest_broker_snapshot.py to load into the quant database.
+Uses ALPACA_PAPER_BASE_URL (default paper-api.alpaca.markets) and key/secret from env.
+"""
 import json
 import os
 import subprocess
@@ -85,28 +90,29 @@ def main():
         ],
     }
 
-    with tempfile.NamedTemporaryFile("w", suffix=".json", delete=False) as f:
-        json.dump(payload, f)
-        tmp = f.name
+    tmp = None
+    try:
+        with tempfile.NamedTemporaryFile("w", suffix=".json", delete=False) as f:
+            json.dump(payload, f)
+            tmp = f.name
 
-    ingest_py = os.path.join(os.path.dirname(__file__), "ingest_broker_snapshot.py")
-    cmd = [
-        "python3",
-        ingest_py,
-        "--provider",
-        "alpaca",
-        "--account-id",
-        ALPACA_ACCOUNT_ID,
-        "--mode",
-        "paper",
-        "--snapshot",
-        tmp,
-        "--db-url",
-        DATABASE_URL,
-    ]
-    subprocess.run(cmd, check=True)
-    print("Alpaca paper pull+ingest complete")
+        ingest_py = os.path.join(os.path.dirname(__file__), "ingest_broker_snapshot.py")
+        cmd = [
+            "python3",
+            ingest_py,
+            "--provider", "alpaca",
+            "--account-id", ALPACA_ACCOUNT_ID,
+            "--mode", "paper",
+            "--snapshot", tmp,
+            "--db-url", DATABASE_URL,
+        ]
+        subprocess.run(cmd, check=True)
+        print("Alpaca paper pull+ingest complete")
 
+
+    finally:
+        if tmp and os.path.exists(tmp):
+            os.unlink(tmp)
 
 if __name__ == "__main__":
     main()
