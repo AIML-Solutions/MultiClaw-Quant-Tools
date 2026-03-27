@@ -552,6 +552,10 @@ class OptionsGreeksVix(QCAlgorithm):
 
         entered = False
 
+        if (not self.enable_options) and self.enable_fallback_equity:
+            # Fallback-only mode: mark option availability as degraded so fallback can engage.
+            self.days_without_chain = max(self.days_without_chain, self.fallback_trigger_days)
+
         # 1) Primary options lane
         if self.enable_options and (not self.option_lane_disabled) and self.option_symbol is not None:
             chain = data.option_chains.get(self.option_symbol)
