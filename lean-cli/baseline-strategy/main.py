@@ -93,13 +93,17 @@ class SymbolState:
         self.st_fast = SimpleSuperTrend(10, 2.0)
         self.st_slow = SimpleSuperTrend(20, 3.0)
 
-        # True calendar-week filter (close of completed ISO weeks).
+        # True calendar-week filter (close of completed ISO weeks) on indicator stream.
         self.weekly_sma = SimpleMovingAverage(25)
         self.current_week = None
         self.last_week_close = None
 
         self.last_close = None
         self.prev_close = None
+        self.raw_last_close = None
+        self.raw_prev_close = None
+        self.price_scale = 1.0
+
         self.prev_fast_st = None
         self.prev_slow_st = None
         self.last_update = None
@@ -112,7 +116,7 @@ class SymbolState:
             and self.atr.is_ready
             and self.st_fast.is_ready
             and self.st_slow.is_ready
-            and self.weekly_sma.samples >= 10
+            and self.weekly_sma.is_ready
         )
 
     @property
@@ -120,8 +124,21 @@ class SymbolState:
         return float(self.last_close or 0.0)
 
     @property
+    def raw_close(self) -> float:
+        if self.raw_last_close is not None:
+            return float(self.raw_last_close)
+        return float(self.last_close or 0.0)
+
+    @property
     def atr_value(self) -> float:
         return float(self.atr.current.value) if self.atr.is_ready else 0.0
+
+    @property
+    def raw_atr_value(self) -> float:
+        if not self.atr.is_ready:
+            return 0.0
+        scale = self.price_scale if self.price_scale > 0 else 1.0
+        return float(self.atr.current.value) / scale
 
     @property
     def ema_fast_value(self) -> float:
@@ -135,20 +152,33 @@ class SymbolState:
     def rsi_value(self) -> float:
         return float(self.rsi.current.value)
 
-    def update(self, bar: TradeBar):
-        close = float(bar.close)
-        end_time = bar.end_time
+    def update_raw_only(self, raw_bar: TradeBar):
+        self.raw_prev_close = self.raw_last_close
+        self.raw_last_close = float(raw_bar.close)
+        self.last_update = raw_bar.end_time
+
+    def update(self, raw_bar: TradeBar, indicator_bar: TradeBar = None):
+        signal_bar = indicator_bar if indicator_bar is not None else raw_bar
+        signal_close = float(signal_bar.close)
+        raw_close = float(raw_bar.close)
+        end_time = signal_bar.end_time
+
+        self.update_raw_only(raw_bar)
 
         self.prev_close = self.last_close
         self.prev_fast_st = self.st_fast.value
         self.prev_slow_st = self.st_slow.value
 
-        self.ema_fast.update(end_time, close)
-        self.ema_slow.update(end_time, close)
-        self.rsi.update(end_time, close)
-        self.atr.update(bar)
-        self.st_fast.update(bar)
-        self.st_slow.update(bar)
+        self.ema_fast.update(end_time, signal_close)
+        self.ema_slow.update(end_time, signal_close)
+        self.rsi.update(end_time, signal_close)
+        self.atr.update(signal_bar)
+        self.st_fast.update(signal_bar)
+        self.st_slow.update(signal_bar)
+
+        scale = signal_close / raw_close if raw_close > 0 else 1.0
+        if scale > 0:
+            self.price_scale = scale
 
         # True calendar-week update: push previous week's close when week changes.
         iso = end_time.isocalendar()
@@ -159,8 +189,8 @@ class SymbolState:
             self.weekly_sma.update(end_time, self.last_week_close)
             self.current_week = week_key
 
-        self.last_week_close = close
-        self.last_close = close
+        self.last_week_close = signal_close
+        self.last_close = signal_close
         self.last_update = end_time
 
 
@@ -172,6 +202,10 @@ class EnhancedMultiAssetSuperTrend(QCAlgorithm):
     - true calendar-week trend filter
     - portfolio-level exposure caps
     - trailing stop on high-water mark (never widens)
+
+    Equity execution stays on RAW bars for realistic fills.
+    Equity indicator warmup and live maintenance use a separate SCALED_RAW stream so
+    splits/dividends do not corrupt EMA/ATR/SuperTrend/weekly regime state.
     """
 
     def initialize(self):
@@ -192,10 +226,12 @@ class EnhancedMultiAssetSuperTrend(QCAlgorithm):
         self.atr_trail_mult = float(self.get_parameter("atr_trail_mult") or 2.2)
         self.min_stop_pct = float(self.get_parameter("min_stop_pct") or 0.015)
         self.min_trail_pct = float(self.get_parameter("min_trail_pct") or 0.02)
-        self.rsi_entry_floor = float(self.get_parameter("rsi_entry_floor") or 52)
-        self.rsi_entry_ceiling = float(self.get_parameter("rsi_entry_ceiling") or 74)
+        self.rsi_entry_floor = float(self.get_parameter("rsi_entry_floor") or 48)
+        self.rsi_entry_ceiling = float(self.get_parameter("rsi_entry_ceiling") or 78)
         self.risk_on_multiplier = float(self.get_parameter("risk_on_multiplier") or 1.10)
         self.risk_off_multiplier = float(self.get_parameter("risk_off_multiplier") or 0.60)
+
+        self.equity_indicator_mode = DataNormalizationMode.SCALED_RAW
 
         self.symbol_states = {}
         self.ticker_to_symbol = {}
@@ -203,8 +239,9 @@ class EnhancedMultiAssetSuperTrend(QCAlgorithm):
         self.pending_entries = {}
         self.cooldown_until = {}
 
-        default_equities = ["SPY", "QQQ", "XLE", "XLI", "GLD", "TLT"]
-        default_cryptos = ["BTCUSD", "ETHUSD", "SOLUSD"]
+        # Defaults aligned to locally-available sample data to avoid silent zero-trade runs.
+        default_equities = ["SPY", "QQQ", "IWM", "EEM", "AAPL", "BAC", "IBM"]
+        default_cryptos = []
 
         eq_raw = (self.get_parameter("equity_tickers") or ",".join(default_equities)).strip()
         cr_raw = (self.get_parameter("crypto_tickers") or ",".join(default_cryptos)).strip()
@@ -239,28 +276,58 @@ class EnhancedMultiAssetSuperTrend(QCAlgorithm):
 
         self._warm_up_all_symbols(history_days=420)
 
+    def _history_tradebars(self, symbol: Symbol, periods: int, data_normalization_mode=None):
+        if data_normalization_mode is None:
+            return list(self.history[TradeBar](symbol, periods, Resolution.DAILY))
+        return list(
+            self.history[TradeBar](
+                symbol,
+                periods,
+                Resolution.DAILY,
+                data_normalization_mode=data_normalization_mode,
+            )
+        )
+
+    def _get_indicator_bar(self, symbol: Symbol, raw_bar: TradeBar, state: SymbolState):
+        if state.is_crypto:
+            return None
+
+        start = raw_bar.end_time - timedelta(days=10)
+        bars = list(
+            self.history[TradeBar](
+                symbol,
+                start,
+                raw_bar.end_time,
+                Resolution.DAILY,
+                data_normalization_mode=self.equity_indicator_mode,
+            )
+        )
+        if len(bars) == 0:
+            return None
+        return bars[-1]
+
     def _warm_up_all_symbols(self, history_days: int):
         for symbol, state in self.symbol_states.items():
-            history = self.history(symbol, history_days, Resolution.DAILY)
-            if history is None or history.empty:
+            if state.is_crypto:
+                history = self._history_tradebars(symbol, history_days)
+            else:
+                history = self._history_tradebars(symbol, history_days, self.equity_indicator_mode)
+
+            if len(history) == 0:
                 self.debug(f"Warmup: no history for {symbol}")
                 continue
 
-            frame = history.loc[symbol] if getattr(history.index, "nlevels", 1) > 1 else history
-
             count = 0
-            for idx, row in frame.iterrows():
-                ts = idx if not isinstance(idx, tuple) else idx[-1]
-                open_ = float(row["open"] if "open" in row else row["Open"])
-                high_ = float(row["high"] if "high" in row else row["High"])
-                low_ = float(row["low"] if "low" in row else row["Low"])
-                close_ = float(row["close"] if "close" in row else row["Close"])
-                vol_ = float(row["volume"] if "volume" in row else row.get("Volume", 0))
-                bar = TradeBar(ts, symbol, open_, high_, low_, close_, vol_)
-                state.update(bar)
+            for bar in history:
+                state.update(bar, bar)
                 count += 1
 
-            self.debug(f"Warmup: {symbol} bars={count} ready={state.ready}")
+            self.debug(
+                f"Warmup: {symbol} bars={count} ready={state.ready} weekly_samples={state.weekly_sma.samples}"
+            )
+
+    def _symbol_has_pending_entry(self, symbol: Symbol) -> bool:
+        return any(pending["symbol"] == symbol for pending in self.pending_entries.values())
 
     def on_data(self, data: Slice):
         # 1) Update indicators and maintain open positions.
@@ -268,8 +335,18 @@ class EnhancedMultiAssetSuperTrend(QCAlgorithm):
             if symbol not in data.bars:
                 continue
 
-            bar = data.bars[symbol]
-            state.update(bar)
+            raw_bar = data.bars[symbol]
+            indicator_bar = raw_bar
+            if not state.is_crypto:
+                indicator_bar = self._get_indicator_bar(symbol, raw_bar, state)
+                if indicator_bar is None:
+                    state.update_raw_only(raw_bar)
+                    self.debug(f"Indicator update skipped for {symbol}: no SCALED_RAW bar available")
+                    if self.portfolio[symbol].invested and symbol in self.positions:
+                        self._update_trailing_stop(symbol, state)
+                    continue
+
+            state.update(raw_bar, indicator_bar)
 
             if self.portfolio[symbol].invested and symbol in self.positions:
                 self._update_trailing_stop(symbol, state)
@@ -285,6 +362,8 @@ class EnhancedMultiAssetSuperTrend(QCAlgorithm):
             if not state.ready:
                 continue
             if self.portfolio[symbol].invested:
+                continue
+            if self._symbol_has_pending_entry(symbol):
                 continue
             if self.time < self.cooldown_until.get(symbol, datetime.min):
                 continue
@@ -306,6 +385,8 @@ class EnhancedMultiAssetSuperTrend(QCAlgorithm):
                 "symbol": symbol,
                 "stop_dist": stop_dist,
                 "submitted_time": self.time,
+                "filled_qty": 0.0,
+                "filled_notional": 0.0,
             }
 
     def _entry_signal(self, state: SymbolState) -> bool:
@@ -322,11 +403,11 @@ class EnhancedMultiAssetSuperTrend(QCAlgorithm):
 
         regime_ok = close > slow_st and close > state.ema_fast_value and state.ema_fast_value > state.ema_slow_value
         momentum_ok = self.rsi_entry_floor <= state.rsi_value <= self.rsi_entry_ceiling
-        weekly_ok = (not state.weekly_sma.is_ready) or (close > float(state.weekly_sma.current.value))
+        weekly_ok = state.weekly_sma.is_ready and close > float(state.weekly_sma.current.value)
 
         # Avoid extremely low-volatility drift entries.
         atr_frac = state.atr_value / close if close > 0 else 0
-        vol_ok = 0.008 <= atr_frac <= 0.20
+        vol_ok = 0.005 <= atr_frac <= 0.22
 
         return crossed_up_fast and regime_ok and momentum_ok and weekly_ok and vol_ok
 
@@ -363,8 +444,9 @@ class EnhancedMultiAssetSuperTrend(QCAlgorithm):
         return max(0.35, min(1.30, scale))
 
     def _compute_position_size(self, symbol: Symbol, state: SymbolState):
-        price = state.close
-        if price <= 0:
+        price = state.raw_close
+        signal_price = state.close
+        if price <= 0 or signal_price <= 0:
             return 0, 0
 
         tpv = float(self.portfolio.total_portfolio_value)
@@ -381,7 +463,7 @@ class EnhancedMultiAssetSuperTrend(QCAlgorithm):
         if class_room <= 0:
             return 0, 0
 
-        stop_dist = max(self.atr_stop_mult * state.atr_value, price * self.min_stop_pct)
+        stop_dist = max(self.atr_stop_mult * state.raw_atr_value, price * self.min_stop_pct)
         if stop_dist <= 0:
             return 0, 0
 
@@ -414,16 +496,31 @@ class EnhancedMultiAssetSuperTrend(QCAlgorithm):
 
         return qty, stop_dist
 
+    def _update_stop_ticket(self, ticket: OrderTicket, quantity: float, stop_price: float, tag: str) -> bool:
+        if ticket is None:
+            return False
+
+        fields = UpdateOrderFields()
+        fields.quantity = -abs(quantity)
+        fields.stop_price = stop_price
+        fields.tag = tag
+        response = ticket.update(fields)
+        return response is not None and response.is_success
+
     def _update_trailing_stop(self, symbol: Symbol, state: SymbolState):
         pos = self.positions.get(symbol)
-        if not pos:
+        if not pos or pos.get("status") == "exit_pending":
             return
 
-        close = state.close
+        close = state.raw_close
         pos["highest"] = max(pos["highest"], close)
 
         atr = state.atr_value
-        trail_pct = max(self.min_trail_pct, (self.atr_trail_mult * atr / close) if close > 0 else self.min_trail_pct)
+        signal_close = state.close
+        trail_pct = max(
+            self.min_trail_pct,
+            (self.atr_trail_mult * atr / signal_close) if signal_close > 0 else self.min_trail_pct,
+        )
         candidate = pos["highest"] * (1.0 - trail_pct)
 
         # Never widen stop; include break-even floor after ~1R move.
@@ -434,14 +531,17 @@ class EnhancedMultiAssetSuperTrend(QCAlgorithm):
         new_stop = max(pos["stop_price"], candidate)
 
         if new_stop > pos["stop_price"] * 1.001 and pos.get("stop_ticket") is not None:
-            fields = UpdateOrderFields()
-            fields.stop_price = new_stop
-            fields.tag = f"trail|{self.time}"
-            response = pos["stop_ticket"].update(fields)
-            if response is not None and response.is_success:
+            if self._update_stop_ticket(pos["stop_ticket"], pos["quantity"], new_stop, f"trail|{self.time}"):
                 pos["stop_price"] = new_stop
 
     def _apply_regime_exit(self, symbol: Symbol, state: SymbolState):
+        if not self.portfolio[symbol].invested:
+            return
+
+        pos = self.positions.get(symbol)
+        if not pos or pos.get("status") == "exit_pending":
+            return
+
         close = state.close
         slow_st = float(state.st_slow.value)
 
@@ -449,8 +549,9 @@ class EnhancedMultiAssetSuperTrend(QCAlgorithm):
         if not regime_broken:
             return
 
-        pos = self.positions.get(symbol)
-        if pos and pos.get("stop_ticket") is not None:
+        pos["status"] = "exit_pending"
+
+        if pos.get("stop_ticket") is not None:
             pos["stop_ticket"].cancel("manual-regime-exit")
 
         self.liquidate(symbol, "regime-exit")
@@ -463,26 +564,66 @@ class EnhancedMultiAssetSuperTrend(QCAlgorithm):
         fill_qty = float(order_event.fill_quantity)
         fill_price = float(order_event.fill_price)
 
-        # Entry fill -> place protective stop.
-        if fill_qty > 0 and order_event.order_id in self.pending_entries:
-            pending = self.pending_entries.pop(order_event.order_id)
-            stop_dist = float(pending["stop_dist"])
-            stop_price = max(0.01, fill_price - stop_dist)
-            stop_ticket = self.stop_market_order(symbol, -fill_qty, stop_price, tag="protective-stop")
+        # Entry fill -> protect immediately and resize the protective stop with UpdateOrderFields on later partial fills.
+        pending = self.pending_entries.get(order_event.order_id)
+        if fill_qty > 0 and pending is not None:
+            pending["filled_qty"] += fill_qty
+            pending["filled_notional"] += fill_qty * fill_price
 
-            self.positions[symbol] = {
-                "entry_price": fill_price,
-                "quantity": fill_qty,
-                "highest": fill_price,
-                "stop_price": stop_price,
-                "initial_stop_dist": stop_dist,
-                "entry_time": self.time,
-                "stop_ticket": stop_ticket,
-            }
+            cumulative_qty = float(pending["filled_qty"])
+            if cumulative_qty <= 0:
+                return
+
+            avg_entry_price = float(pending["filled_notional"]) / cumulative_qty
+            stop_dist = float(pending["stop_dist"])
+            stop_price = max(0.01, avg_entry_price - stop_dist)
+
+            pos = self.positions.get(symbol)
+            if pos is None:
+                stop_ticket = self.stop_market_order(symbol, -cumulative_qty, stop_price, tag="protective-stop")
+                self.positions[symbol] = {
+                    "entry_price": avg_entry_price,
+                    "quantity": cumulative_qty,
+                    "highest": fill_price,
+                    "stop_price": stop_price,
+                    "initial_stop_dist": stop_dist,
+                    "entry_time": self.time,
+                    "stop_ticket": stop_ticket,
+                    "status": "entry_pending" if order_event.status == OrderStatus.PARTIALLY_FILLED else "active",
+                    "entry_order_id": order_event.order_id,
+                }
+            else:
+                pos["entry_price"] = avg_entry_price
+                pos["quantity"] = cumulative_qty
+                pos["highest"] = max(pos["highest"], fill_price)
+                pos["initial_stop_dist"] = stop_dist
+                pos["status"] = "entry_pending" if order_event.status == OrderStatus.PARTIALLY_FILLED else "active"
+
+                if pos.get("stop_ticket") is None:
+                    pos["stop_ticket"] = self.stop_market_order(symbol, -cumulative_qty, stop_price, tag="protective-stop")
+                    pos["stop_price"] = stop_price
+                elif self._update_stop_ticket(
+                    pos["stop_ticket"],
+                    cumulative_qty,
+                    stop_price,
+                    f"protective-stop-partial|{self.time}",
+                ):
+                    pos["stop_price"] = stop_price
+
+            if order_event.status == OrderStatus.FILLED:
+                pending = self.pending_entries.pop(order_event.order_id, None)
+                pos = self.positions.get(symbol)
+                if pos is not None:
+                    pos["status"] = "active"
             return
 
-        # Exit fill -> clear state + cooldown if flat.
+        # Exit fill -> mark exit flow and clear state + cooldown once flat.
         if fill_qty < 0:
+            pos = self.positions.get(symbol)
+            if pos is not None:
+                pos["status"] = "exit_pending"
+                pos["quantity"] = max(0.0, float(self.portfolio[symbol].quantity))
+
             holding_qty = float(self.portfolio[symbol].quantity)
             if abs(holding_qty) < 1e-9:
                 pos = self.positions.pop(symbol, None)
