@@ -1,0 +1,65 @@
+{
+  "generated_at": "2026-03-28T04:08:31.784962+00:00",
+  "rows": [
+    {
+      "lane": "phase3_walkforward",
+      "path": "/home/aimls-dtd/.openclaw-nemoclaw/workspace/projects/quantconnect/lean-cli/docs/PHASE3_WALKFORWARD_2026-03-28_phase3_walkforward.json",
+      "name": "PHASE3_WALKFORWARD_2026-03-28_phase3_walkforward.json",
+      "modified_utc": "2026-03-28T03:26:02.479167+00:00",
+      "summary": {
+        "type": "list",
+        "rows": 18
+      }
+    },
+    {
+      "lane": "phase3_allocator",
+      "path": "/home/aimls-dtd/.openclaw-nemoclaw/workspace/projects/quantconnect/lean-cli/docs/PHASE3_SLEEVE_ALLOCATOR_2026-03-28_phase3_allocator.json",
+      "name": "PHASE3_SLEEVE_ALLOCATOR_2026-03-28_phase3_allocator.json",
+      "modified_utc": "2026-03-28T03:17:00.674088+00:00",
+      "summary": {
+        "type": "allocator",
+        "rows": 5
+      }
+    },
+    {
+      "lane": "phase3_matrix",
+      "path": "/home/aimls-dtd/.openclaw-nemoclaw/workspace/projects/quantconnect/lean-cli/docs/PHASE3_BACKTEST_MATRIX_2026-03-28_phase3_matrix.json",
+      "name": "PHASE3_BACKTEST_MATRIX_2026-03-28_phase3_matrix.json",
+      "modified_utc": "2026-03-28T03:16:48.835011+00:00",
+      "summary": {
+        "type": "list",
+        "rows": 12
+      }
+    },
+    {
+      "lane": "phase2_tuning",
+      "path": "/home/aimls-dtd/.openclaw-nemoclaw/workspace/projects/quantconnect/lean-cli/docs/PHASE2_TUNING_2026-03-27_phase2_tuning.json",
+      "name": "PHASE2_TUNING_2026-03-27_phase2_tuning.json",
+      "modified_utc": "2026-03-27T22:53:16.206048+00:00",
+      "summary": {
+        "type": "list",
+        "rows": 15
+      }
+    },
+    {
+      "lane": "phase2_oos",
+      "path": "/home/aimls-dtd/.openclaw-nemoclaw/workspace/projects/quantconnect/lean-cli/docs/PHASE2_OOS_VALIDATION_2026-03-27_phase2_oos.json",
+      "name": "PHASE2_OOS_VALIDATION_2026-03-27_phase2_oos.json",
+      "modified_utc": "2026-03-27T22:40:13.036520+00:00",
+      "summary": {
+        "type": "list",
+        "rows": 10
+      }
+    },
+    {
+      "lane": "phase2_matrix",
+      "path": "/home/aimls-dtd/.openclaw-nemoclaw/workspace/projects/quantconnect/lean-cli/docs/PHASE2_BACKTEST_MATRIX_2026-03-27_phase2_matrix.json",
+      "name": "PHASE2_BACKTEST_MATRIX_2026-03-27_phase2_matrix.json",
+      "modified_utc": "2026-03-27T22:33:21.563089+00:00",
+      "summary": {
+        "type": "list",
+        "rows": 15
+      }
+    }
+  ]
+}

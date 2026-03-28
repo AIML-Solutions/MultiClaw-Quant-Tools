@@ -1,0 +1,286 @@
+[
+  {
+    "project": "baseline-strategy",
+    "scenario": "baseline_phase3_core",
+    "params": {
+      "start_year": "2018",
+      "end_year": "2020",
+      "risk_per_trade": "0.004",
+      "max_positions": "6"
+    },
+    "status_code": 0,
+    "duration_sec": 37.99,
+    "output_dir": "/home/aimls-dtd/.openclaw-nemoclaw/workspace/projects/quantconnect/lean-cli/baseline-strategy/backtests/2026-03-28_phase3_matrix/baseline_phase3_core",
+    "stats": {
+      "Total Orders": "73",
+      "Net Profit": "2.692%",
+      "End Equity": "102691.64",
+      "Drawdown": "3.200%",
+      "Sharpe Ratio": "-0.799",
+      "Sortino Ratio": "-0.365",
+      "Total Fees": "$32.82",
+      "Portfolio Turnover": "0.59%"
+    }
+  },
+  {
+    "project": "baseline-strategy",
+    "scenario": "baseline_phase3_oos",
+    "params": {
+      "start_year": "2019",
+      "end_year": "2021",
+      "risk_per_trade": "0.004",
+      "max_positions": "6"
+    },
+    "status_code": 0,
+    "duration_sec": 28.61,
+    "output_dir": "/home/aimls-dtd/.openclaw-nemoclaw/workspace/projects/quantconnect/lean-cli/baseline-strategy/backtests/2026-03-28_phase3_matrix/baseline_phase3_oos",
+    "stats": {
+      "Total Orders": "72",
+      "Net Profit": "3.019%",
+      "End Equity": "103018.94",
+      "Drawdown": "3.200%",
+      "Sharpe Ratio": "-0.325",
+      "Sortino Ratio": "-0.136",
+      "Total Fees": "$31.46",
+      "Portfolio Turnover": "0.56%"
+    }
+  },
+  {
+    "project": "regime-ensemble-alpha",
+    "scenario": "regime_phase3_core",
+    "params": {
+      "start_year": "2014",
+      "end_year": "2020",
+      "include_crypto": "false",
+      "risk_tickers": "SPY,QQQ,IWM,EEM,AAPL,BAC,IBM,GOOG",
+      "def_tickers": "USO,BNO"
+    },
+    "status_code": 0,
+    "duration_sec": 60.52,
+    "output_dir": "/home/aimls-dtd/.openclaw-nemoclaw/workspace/projects/quantconnect/lean-cli/regime-ensemble-alpha/backtests/2026-03-28_phase3_matrix/regime_phase3_core",
+    "stats": {
+      "Total Orders": "1421",
+      "Net Profit": "24.228%",
+      "End Equity": "124227.61",
+      "Drawdown": "9.500%",
+      "Sharpe Ratio": "0.185",
+      "Sortino Ratio": "0.182",
+      "Total Fees": "$511.59",
+      "Portfolio Turnover": "2.26%"
+    }
+  },
+  {
+    "project": "regime-ensemble-alpha",
+    "scenario": "regime_phase3_oos",
+    "params": {
+      "start_year": "2019",
+      "end_year": "2021",
+      "include_crypto": "false",
+      "risk_tickers": "SPY,QQQ,IWM,EEM,AAPL,BAC,IBM,GOOG",
+      "def_tickers": "USO,BNO"
+    },
+    "status_code": 0,
+    "duration_sec": 37.31,
+    "output_dir": "/home/aimls-dtd/.openclaw-nemoclaw/workspace/projects/quantconnect/lean-cli/regime-ensemble-alpha/backtests/2026-03-28_phase3_matrix/regime_phase3_oos",
+    "stats": {
+      "Total Orders": "527",
+      "Net Profit": "22.557%",
+      "End Equity": "122557.40",
+      "Drawdown": "9.000%",
+      "Sharpe Ratio": "0.717",
+      "Sortino Ratio": "0.6",
+      "Total Fees": "$195.09",
+      "Portfolio Turnover": "1.99%"
+    }
+  },
+  {
+    "project": "anchored-vwap-sleeve",
+    "scenario": "avwap_phase3_core",
+    "params": {
+      "start_year": "2014",
+      "end_year": "2020",
+      "include_crypto": "false",
+      "equity_tickers": "SPY,QQQ,IWM,EEM,AAPL,BAC,IBM,USO,BNO"
+    },
+    "status_code": 0,
+    "duration_sec": 24.88,
+    "output_dir": "/home/aimls-dtd/.openclaw-nemoclaw/workspace/projects/quantconnect/lean-cli/anchored-vwap-sleeve/backtests/2026-03-28_phase3_matrix/avwap_phase3_core",
+    "stats": {
+      "Total Orders": "1209",
+      "Net Profit": "-3.084%",
+      "End Equity": "96915.69",
+      "Drawdown": "7.200%",
+      "Sharpe Ratio": "-0.883",
+      "Sortino Ratio": "-0.586",
+      "Total Fees": "$406.23",
+      "Portfolio Turnover": "3.00%"
+    }
+  },
+  {
+    "project": "anchored-vwap-sleeve",
+    "scenario": "avwap_phase3_conservative",
+    "params": {
+      "start_year": "2014",
+      "end_year": "2020",
+      "include_crypto": "false",
+      "equity_tickers": "SPY,QQQ,IWM,EEM,AAPL,BAC,IBM,USO,BNO",
+      "risk_per_trade": "0.0025",
+      "max_positions": "2",
+      "max_position_weight": "0.10",
+      "entry_gap_pct_max": "0.03",
+      "max_entries_per_day": "1"
+    },
+    "status_code": 0,
+    "duration_sec": 26.03,
+    "output_dir": "/home/aimls-dtd/.openclaw-nemoclaw/workspace/projects/quantconnect/lean-cli/anchored-vwap-sleeve/backtests/2026-03-28_phase3_matrix/avwap_phase3_conservative",
+    "stats": {
+      "Total Orders": "1136",
+      "Net Profit": "-1.582%",
+      "End Equity": "98418.27",
+      "Drawdown": "6.100%",
+      "Sharpe Ratio": "-1.034",
+      "Sortino Ratio": "-0.67",
+      "Total Fees": "$326.69",
+      "Portfolio Turnover": "2.25%"
+    }
+  },
+  {
+    "project": "anchored-vwap-sleeve",
+    "scenario": "avwap_phase3_oos",
+    "params": {
+      "start_year": "2019",
+      "end_year": "2021",
+      "include_crypto": "false",
+      "equity_tickers": "SPY,QQQ,IWM,EEM,AAPL,BAC,IBM,USO,BNO"
+    },
+    "status_code": 0,
+    "duration_sec": 20.39,
+    "output_dir": "/home/aimls-dtd/.openclaw-nemoclaw/workspace/projects/quantconnect/lean-cli/anchored-vwap-sleeve/backtests/2026-03-28_phase3_matrix/avwap_phase3_oos",
+    "stats": {
+      "Total Orders": "471",
+      "Net Profit": "-3.880%",
+      "End Equity": "96120.21",
+      "Drawdown": "4.300%",
+      "Sharpe Ratio": "-1.049",
+      "Sortino Ratio": "-0.631",
+      "Total Fees": "$140.98",
+      "Portfolio Turnover": "2.24%"
+    }
+  },
+  {
+    "project": "statarb-spread-engine",
+    "scenario": "statarb_phase3_core",
+    "params": {
+      "start_year": "2014",
+      "end_year": "2020"
+    },
+    "status_code": 0,
+    "duration_sec": 70.16,
+    "output_dir": "/home/aimls-dtd/.openclaw-nemoclaw/workspace/projects/quantconnect/lean-cli/statarb-spread-engine/backtests/2026-03-28_phase3_matrix/statarb_phase3_core",
+    "stats": {
+      "Total Orders": "40",
+      "Net Profit": "-0.097%",
+      "End Equity": "99903.27",
+      "Drawdown": "0.100%",
+      "Sharpe Ratio": "-44.725",
+      "Sortino Ratio": "-8.075",
+      "Total Fees": "$40.00",
+      "Portfolio Turnover": "0.02%"
+    }
+  },
+  {
+    "project": "statarb-spread-engine",
+    "scenario": "statarb_phase3_tighter",
+    "params": {
+      "start_year": "2014",
+      "end_year": "2020",
+      "entry_z": "3.2",
+      "min_edge_z": "1.8",
+      "roundtrip_cost_pct": "0.0022",
+      "pair_risk_pct": "0.02"
+    },
+    "status_code": 0,
+    "duration_sec": 70.6,
+    "output_dir": "/home/aimls-dtd/.openclaw-nemoclaw/workspace/projects/quantconnect/lean-cli/statarb-spread-engine/backtests/2026-03-28_phase3_matrix/statarb_phase3_tighter",
+    "stats": {
+      "Total Orders": "32",
+      "Net Profit": "-0.133%",
+      "End Equity": "99866.80",
+      "Drawdown": "0.200%",
+      "Sharpe Ratio": "-64.99",
+      "Sortino Ratio": "-10.361",
+      "Total Fees": "$32.00",
+      "Portfolio Turnover": "0.01%"
+    }
+  },
+  {
+    "project": "statarb-spread-engine",
+    "scenario": "statarb_phase3_oos",
+    "params": {
+      "start_year": "2019",
+      "end_year": "2021"
+    },
+    "status_code": 0,
+    "duration_sec": 57.29,
+    "output_dir": "/home/aimls-dtd/.openclaw-nemoclaw/workspace/projects/quantconnect/lean-cli/statarb-spread-engine/backtests/2026-03-28_phase3_matrix/statarb_phase3_oos",
+    "stats": {
+      "Total Orders": "20",
+      "Net Profit": "-0.090%",
+      "End Equity": "99909.59",
+      "Drawdown": "0.100%",
+      "Sharpe Ratio": "-29.083",
+      "Sortino Ratio": "-5.314",
+      "Total Fees": "$20.00",
+      "Portfolio Turnover": "0.02%"
+    }
+  },
+  {
+    "project": "options-greeks-vix",
+    "scenario": "options_phase3_core",
+    "params": {
+      "start_year": "2014",
+      "end_year": "2015",
+      "enable_options": "true",
+      "option_underlying_ticker": "AAPL",
+      "underlying_ticker": "SPY"
+    },
+    "status_code": 0,
+    "duration_sec": 29.26,
+    "output_dir": "/home/aimls-dtd/.openclaw-nemoclaw/workspace/projects/quantconnect/lean-cli/options-greeks-vix/backtests/2026-03-28_phase3_matrix/options_phase3_core",
+    "stats": {
+      "Total Orders": "21",
+      "Net Profit": "2.776%",
+      "End Equity": "102776.15",
+      "Drawdown": "2.600%",
+      "Sharpe Ratio": "0.099",
+      "Sortino Ratio": "0.107",
+      "Total Fees": "$21.03",
+      "Portfolio Turnover": "0.57%"
+    }
+  },
+  {
+    "project": "options-greeks-vix",
+    "scenario": "options_phase3_fallback",
+    "params": {
+      "start_year": "2014",
+      "end_year": "2015",
+      "enable_options": "false",
+      "fallback_equity_mode": "true",
+      "option_underlying_ticker": "AAPL",
+      "underlying_ticker": "SPY"
+    },
+    "status_code": 0,
+    "duration_sec": 20.46,
+    "output_dir": "/home/aimls-dtd/.openclaw-nemoclaw/workspace/projects/quantconnect/lean-cli/options-greeks-vix/backtests/2026-03-28_phase3_matrix/options_phase3_fallback",
+    "stats": {
+      "Total Orders": "7",
+      "Net Profit": "3.170%",
+      "End Equity": "103169.76",
+      "Drawdown": "2.700%",
+      "Sharpe Ratio": "0.154",
+      "Sortino Ratio": "0.168",
+      "Total Fees": "$7.01",
+      "Portfolio Turnover": "0.19%"
+    }
+  }
+]

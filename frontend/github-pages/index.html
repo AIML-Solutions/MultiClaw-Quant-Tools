@@ -1,0 +1,82 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>MultiClaw Quant Dashboard</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <header>
+    <h1>MultiClaw Quant Dashboard</h1>
+    <p>Paper-trading research cockpit (static GitHub Pages view)</p>
+  </header>
+
+  <main>
+    <section class="card">
+      <h2>Latest Artifacts</h2>
+      <div id="artifact-list">Loading...</div>
+    </section>
+
+    <section class="card">
+      <h2>Strategy Overview</h2>
+      <table id="strategy-table">
+        <thead>
+          <tr>
+            <th>Project</th>
+            <th>Scenario</th>
+            <th>Net Profit</th>
+            <th>Sharpe</th>
+            <th>Drawdown</th>
+            <th>Orders</th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+    </section>
+
+    <section class="card">
+      <h2>Walk-Forward Stability</h2>
+      <table id="walk-table">
+        <thead>
+          <tr>
+            <th>Sleeve</th>
+            <th>Window</th>
+            <th>Net Profit</th>
+            <th>Sharpe</th>
+            <th>Drawdown</th>
+            <th>Orders</th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+    </section>
+
+    <section class="card">
+      <h2>Recommended Sleeve Weights</h2>
+      <table id="alloc-table">
+        <thead>
+          <tr>
+            <th>Sleeve</th>
+            <th>Scenario</th>
+            <th>Weight</th>
+            <th>Score</th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+    </section>
+
+    <section class="card">
+      <h2>Paper Trading Snapshot</h2>
+      <pre id="paper-json">No snapshot loaded.</pre>
+    </section>
+  </main>
+
+  <footer>
+    <small>Generated from repo artifacts. For execution use internal tools only.</small>
+  </footer>
+
+  <script src="app.js"></script>
+</body>
+</html>

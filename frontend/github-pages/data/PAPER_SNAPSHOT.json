@@ -1,0 +1,31 @@
+{
+  "as_of": "2026-03-01T04:30:00Z",
+  "account": {
+    "status": "ACTIVE",
+    "base_currency": "USD",
+    "equity": 100000
+  },
+  "positions": [
+    {
+      "symbol": "QQQ",
+      "qty": 5,
+      "avg_entry_price": 441.2,
+      "market_price": 442.0,
+      "market_value": 2210.0,
+      "unrealized_pl": 4.0
+    }
+  ],
+  "orders": [
+    {
+      "id": "tradier-paper-ord-001",
+      "symbol": "QQQ",
+      "side": "buy",
+      "type": "limit",
+      "status": "open",
+      "qty": 5,
+      "filled_qty": 0,
+      "submitted_at": "2026-03-01T04:22:00Z",
+      "updated_at": "2026-03-01T04:22:00Z"
+    }
+  ]
+}

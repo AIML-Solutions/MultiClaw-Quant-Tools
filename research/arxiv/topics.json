@@ -1,0 +1,8 @@
+{
+  "trend_momentum": "(all:momentum OR all:trend-following OR all:cross-sectional momentum) AND (cat:q-fin.ST OR cat:q-fin.PM)",
+  "options_vol_surface": "(all:implied volatility OR all:volatility surface OR all:0DTE OR all:greeks) AND (cat:q-fin.PR OR cat:q-fin.CP)",
+  "statarb_pairs": "(all:statistical arbitrage OR all:pairs trading OR all:cointegration) AND (cat:q-fin.ST OR cat:q-fin.TR)",
+  "execution_microstructure": "(all:market microstructure OR all:optimal execution OR all:order flow) AND (cat:q-fin.TR OR cat:q-fin.ST)",
+  "crypto_market_structure": "(all:cryptocurrency OR all:crypto market microstructure OR all:on-chain) AND (cat:q-fin.TR OR cat:cs.CE)",
+  "portfolio_regime": "(all:portfolio optimization OR all:regime detection OR all:volatility targeting) AND (cat:q-fin.PM OR cat:q-fin.RM)"
+}
