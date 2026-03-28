@@ -170,15 +170,21 @@ class AnchoredVwapCrossAssetSleeve(QCAlgorithm):
         self.set_end_date(int(self.get_parameter("end_year") or 2025), 12, 31)
         self.set_cash(float(self.get_parameter("initial_cash") or 100000))
 
-        self.risk_per_trade = float(self.get_parameter("risk_per_trade") or 0.004)
-        self.max_positions = int(self.get_parameter("max_positions") or 5)
-        self.max_position_weight = float(self.get_parameter("max_position_weight") or 0.20)
-        self.cooldown_days = int(self.get_parameter("cooldown_days") or 3)
+        self.risk_per_trade = float(self.get_parameter("risk_per_trade") or 0.003)
+        self.max_positions = int(self.get_parameter("max_positions") or 3)
+        self.max_position_weight = float(self.get_parameter("max_position_weight") or 0.15)
+        self.cooldown_days = int(self.get_parameter("cooldown_days") or 5)
 
         self.atr_stop_mult = float(self.get_parameter("atr_stop_mult") or 2.4)
         self.trail_atr_mult = float(self.get_parameter("trail_atr_mult") or 1.9)
         self.min_stop_pct = float(self.get_parameter("min_stop_pct") or 0.015)
-        self.min_trail_pct = float(self.get_parameter("min_trail_pct") or 0.018)
+        self.min_trail_pct = float(self.get_parameter("min_trail_pct") or 0.020)
+
+        self.min_hold_days = int(self.get_parameter("min_hold_days") or 3)
+        self.max_entries_per_day = int(self.get_parameter("max_entries_per_day") or 2)
+        self.entry_gap_pct_max = float(self.get_parameter("entry_gap_pct_max") or 0.050)
+        self.max_benchmark_atr_pct = float(self.get_parameter("max_benchmark_atr_pct") or 0.045)
+        self.weekly_entry_only = str(self.get_parameter("weekly_entry_only") or "true").lower() in ("1", "true", "yes", "y")
 
         self.include_crypto = str(self.get_parameter("include_crypto") or "false").lower() in ("1", "true", "yes", "y")
 
@@ -218,6 +224,8 @@ class AnchoredVwapCrossAssetSleeve(QCAlgorithm):
         self.positions = {}
         self.pending_entries = {}
         self.cooldown_until = {}
+        self.entries_today = 0
+        self.entries_day = None
 
         self.benchmark_symbol = self.ticker_to_symbol.get("SPY") or next(iter(self.states.keys()))
         self.set_benchmark(self.benchmark_symbol)
@@ -228,6 +236,21 @@ class AnchoredVwapCrossAssetSleeve(QCAlgorithm):
 
     def _active_positions_count(self) -> int:
         return sum(1 for s in self.states if self.portfolio[s].invested)
+
+    def _refresh_daily_entry_counter(self):
+        day = self.time.date()
+        if self.entries_day != day:
+            self.entries_day = day
+            self.entries_today = 0
+
+    def _benchmark_vol_ok(self) -> bool:
+        st = self.states.get(self.benchmark_symbol)
+        if st is None or not st.atr.is_ready:
+            return True
+        px = st.raw_close
+        if px <= 0:
+            return True
+        return (st.atr_value / px) <= self.max_benchmark_atr_pct
 
     def _update_stop_ticket(self, ticket: OrderTicket, quantity: float, stop_price: float, tag: str) -> bool:
         if ticket is None:
@@ -267,9 +290,22 @@ class AnchoredVwapCrossAssetSleeve(QCAlgorithm):
         m = float(st.avwap.monthly_value)
         e = float(st.avwap.event_value) if st.avwap.event_value is not None else None
 
-        trend = px > w and w > m and px > sma
-        reclaim = prev is not None and prev <= w and px > w and st.avwap.weekly_slope() > -0.02
-        event_ok = True if e is None else (px >= 0.995 * e)
+        if px <= 0 or w <= 0:
+            return False
+
+        slope = st.avwap.weekly_slope()
+        dist_w = (px - w) / px
+        not_overstretched = dist_w <= self.entry_gap_pct_max
+
+        trend = px > w and w > m and px > sma and slope >= 0.0 and not_overstretched
+        reclaim = (
+            prev is not None
+            and prev <= w
+            and px > w
+            and slope > -0.01
+            and not_overstretched
+        )
+        event_ok = True if e is None else (px >= 0.997 * e)
 
         return (trend or reclaim) and event_ok
 
@@ -339,11 +375,18 @@ class AnchoredVwapCrossAssetSleeve(QCAlgorithm):
         w = st.avwap.weekly_value
         sma = float(st.sma.current.value) if st.sma.is_ready else None
 
+        holding_days = max(0, (self.time.date() - pos.get("entry_time", self.time).date()).days)
+
         regime_broken = False
         if w is not None and px < float(w):
             regime_broken = True
         if sma is not None and px < sma:
             regime_broken = True
+
+        # Let fresh entries breathe unless breakdown is severe.
+        severe_break = (w is not None and px < 0.97 * float(w))
+        if holding_days < self.min_hold_days and (not severe_break):
+            regime_broken = False
 
         if not regime_broken:
             return
@@ -363,6 +406,8 @@ class AnchoredVwapCrossAssetSleeve(QCAlgorithm):
                     st.avwap.update(bar)
             return
 
+        self._refresh_daily_entry_counter()
+
         # Update states and open positions
         for symbol, st in self.states.items():
             if symbol not in data.bars:
@@ -378,6 +423,15 @@ class AnchoredVwapCrossAssetSleeve(QCAlgorithm):
                 self._apply_regime_exit(symbol, st)
 
         if not self._regime_ok():
+            return
+        if not self._benchmark_vol_ok():
+            return
+
+        if self.weekly_entry_only and self.time.weekday() != 0:
+            # New entries only at start of week to reduce churn.
+            return
+
+        if self.entries_today >= self.max_entries_per_day:
             return
 
         if self._active_positions_count() >= self.max_positions:
@@ -412,6 +466,7 @@ class AnchoredVwapCrossAssetSleeve(QCAlgorithm):
                 "filled_notional": 0.0,
                 "submitted_time": self.time,
             }
+            self.entries_today += 1
 
     def on_order_event(self, order_event: OrderEvent):
         if order_event.status not in [OrderStatus.FILLED, OrderStatus.PARTIALLY_FILLED]:

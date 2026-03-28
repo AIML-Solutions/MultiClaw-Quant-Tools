@@ -20,29 +20,31 @@ class StatarbSpreadEngine(QCAlgorithm):
         self.set_end_date(int(self.get_parameter("end_year") or 2025), 12, 31)
         self.set_cash(float(self.get_parameter("initial_cash") or 100000))
 
-        self.lookback = int(self.get_parameter("lookback") or 110)
-        self.entry_z = float(self.get_parameter("entry_z") or 2.1)
-        self.exit_z = float(self.get_parameter("exit_z") or 0.35)
-        self.stop_z = float(self.get_parameter("stop_z") or 3.7)
-        self.max_active_pairs = int(self.get_parameter("max_active_pairs") or 2)
-        self.pair_risk_pct = float(self.get_parameter("pair_risk_pct") or 0.05)
-        self.cooldown_days = int(self.get_parameter("cooldown_days") or 2)
+        self.lookback = int(self.get_parameter("lookback") or 120)
+        self.entry_z = float(self.get_parameter("entry_z") or 3.0)
+        self.exit_z = float(self.get_parameter("exit_z") or 0.30)
+        self.stop_z = float(self.get_parameter("stop_z") or 4.2)
+        self.max_active_pairs = int(self.get_parameter("max_active_pairs") or 1)
+        self.pair_risk_pct = float(self.get_parameter("pair_risk_pct") or 0.025)
+        self.cooldown_days = int(self.get_parameter("cooldown_days") or 6)
 
-        self.min_corr = float(self.get_parameter("min_corr") or 0.55)
-        self.min_half_life = float(self.get_parameter("min_half_life") or 3.0)
-        self.max_half_life = float(self.get_parameter("max_half_life") or 45.0)
-        self.max_holding_days = int(self.get_parameter("max_holding_days") or 14)
-        self.max_pair_loss_pct = float(self.get_parameter("max_pair_loss_pct") or 0.022)
+        self.min_corr = float(self.get_parameter("min_corr") or 0.82)
+        self.min_half_life = float(self.get_parameter("min_half_life") or 4.0)
+        self.max_half_life = float(self.get_parameter("max_half_life") or 20.0)
+        self.max_holding_days = int(self.get_parameter("max_holding_days") or 12)
+        self.max_pair_loss_pct = float(self.get_parameter("max_pair_loss_pct") or 0.014)
+        self.min_edge_z = float(self.get_parameter("min_edge_z") or 1.60)
+        self.roundtrip_cost_pct = float(self.get_parameter("roundtrip_cost_pct") or 0.0020)
+        self.min_expected_edge_mult = float(self.get_parameter("min_expected_edge_mult") or 1.35)
 
         self.beta_min = float(self.get_parameter("beta_min") or 0.35)
         self.beta_max = float(self.get_parameter("beta_max") or 2.75)
 
+        # Data-robust defaults: symbols commonly present in local sample bundles.
         self.pair_defs = [
             ("SPY", "QQQ"),
-            ("XLE", "XOP"),
-            ("XLF", "KRE"),
-            ("XLK", "QQQ"),
             ("IWM", "SPY"),
+            ("AAPL", "QQQ"),
         ]
 
         self.symbols = {}
@@ -142,6 +144,13 @@ class StatarbSpreadEngine(QCAlgorithm):
             "half_life": half_life,
             "spread": float(spread[-1]),
         }
+
+    def _expected_edge_pct(self, stats: dict) -> float:
+        edge_z = max(0.0, abs(float(stats["z"])) - self.exit_z)
+        # Approximate reversion edge in log-spread units, scaled to pair notional.
+        spread_move = edge_z * float(stats["sd"])
+        beta_abs = max(0.2, abs(float(stats["beta"])))
+        return max(0.0, spread_move / (1.0 + beta_abs))
 
     def _symbol_in_active(self, sym: Symbol) -> bool:
         for st in self.active.values():
@@ -270,13 +279,29 @@ class StatarbSpreadEngine(QCAlgorithm):
                 continue
 
             # Dynamic threshold: longer half-life requires stronger dislocation.
-            dyn_entry = self.entry_z + (0.30 if half_life > 28 else 0.0)
+            dyn_entry = self.entry_z + (0.25 if half_life > 16 else 0.0)
+
+            # Basic edge-vs-cost gate: skip weak excursions likely to be fee/slippage noise.
+            edge = abs(z) - self.exit_z
+            if edge < self.min_edge_z:
+                continue
+
+            expected_edge_pct = self._expected_edge_pct(stats)
+            min_required_edge = self.roundtrip_cost_pct * self.min_expected_edge_mult
+            if expected_edge_pct < min_required_edge:
+                continue
 
             if z >= dyn_entry:
                 # A rich vs B -> short A / long B
                 self._open_pair(a, b, -1, key, beta, z)
-                self.debug(f"open {key} SHORT_A z={z:.2f} corr={corr:.2f} hl={half_life:.1f}")
+                self.debug(
+                    f"open {key} SHORT_A z={z:.2f} corr={corr:.2f} hl={half_life:.1f} "
+                    f"edge={edge:.2f} exp={expected_edge_pct:.3%}"
+                )
             elif z <= -dyn_entry:
                 # A cheap vs B -> long A / short B
                 self._open_pair(a, b, +1, key, beta, z)
-                self.debug(f"open {key} LONG_A z={z:.2f} corr={corr:.2f} hl={half_life:.1f}")
+                self.debug(
+                    f"open {key} LONG_A z={z:.2f} corr={corr:.2f} hl={half_life:.1f} "
+                    f"edge={edge:.2f} exp={expected_edge_pct:.3%}"
+                )

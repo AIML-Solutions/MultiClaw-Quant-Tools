@@ -153,23 +153,24 @@ class RegimeEnsembleAlpha(QCAlgorithm):
         self.set_end_date(int(self.get_parameter("end_year") or 2025), 12, 31)
         self.set_cash(float(self.get_parameter("initial_cash") or 100000))
 
-        self.max_weight = float(self.get_parameter("max_weight") or 0.18)
-        self.rebalance_days = int(self.get_parameter("rebalance_days") or 3)
+        self.max_weight = float(self.get_parameter("max_weight") or 0.14)
+        self.rebalance_days = int(self.get_parameter("rebalance_days") or 7)
         self.max_drawdown = float(self.get_parameter("max_drawdown") or 0.10)
         self.hard_stop_drawdown = float(self.get_parameter("hard_stop_drawdown") or 0.16)
         self.risk_off_days = int(self.get_parameter("risk_off_days") or 12)
 
-        self.min_rebalance_delta = float(self.get_parameter("min_rebalance_delta") or 0.01)
-        self.max_turnover_per_rebalance = float(self.get_parameter("max_turnover_per_rebalance") or 0.35)
-        self.min_cash_pct = float(self.get_parameter("min_cash_pct") or 0.03)
-        self.defensive_floor = float(self.get_parameter("defensive_floor") or 0.15)
+        self.min_rebalance_delta = float(self.get_parameter("min_rebalance_delta") or 0.015)
+        self.max_turnover_per_rebalance = float(self.get_parameter("max_turnover_per_rebalance") or 0.20)
+        self.min_cash_pct = float(self.get_parameter("min_cash_pct") or 0.04)
+        self.defensive_floor = float(self.get_parameter("defensive_floor") or 0.20)
+        self.alpha_quantile_floor = float(self.get_parameter("alpha_quantile_floor") or 0.60)
 
         self.mom_fast_w = float(self.get_parameter("mom_fast_weight") or 0.30)
         self.mom_mid_w = float(self.get_parameter("mom_mid_weight") or 0.35)
         self.mom_slow_w = float(self.get_parameter("mom_slow_weight") or 0.35)
 
-        self.target_portfolio_vol = float(self.get_parameter("target_portfolio_vol") or 0.14)
-        self.corr_penalty_weight = float(self.get_parameter("corr_penalty_weight") or 0.18)
+        self.target_portfolio_vol = float(self.get_parameter("target_portfolio_vol") or 0.10)
+        self.corr_penalty_weight = float(self.get_parameter("corr_penalty_weight") or 0.20)
 
         # Defaults chosen for local data availability and diverse factor behavior.
         risk_default = "SPY,QQQ,IWM,EEM,AAPL,BAC,IBM,GOOG"
@@ -242,6 +243,7 @@ class RegimeEnsembleAlpha(QCAlgorithm):
         self.peak_equity = float(self.portfolio.total_portfolio_value)
         self.last_rebalance = self.start_date - timedelta(days=30)
         self.risk_off_until = datetime.min
+        self.hard_stop_armed = False
 
         if self.spy is not None:
             self.set_benchmark(self.spy)
@@ -513,8 +515,12 @@ class RegimeEnsembleAlpha(QCAlgorithm):
         self.peak_equity = max(self.peak_equity, tpv)
         drawdown = (self.peak_equity - tpv) / self.peak_equity if self.peak_equity > 0 else 0.0
 
-        if drawdown >= self.hard_stop_drawdown:
+        if drawdown >= self.hard_stop_drawdown and not self.hard_stop_armed:
             self.risk_off_until = max(self.risk_off_until, self.time + timedelta(days=self.risk_off_days))
+            self.hard_stop_armed = True
+        elif drawdown <= (self.max_drawdown * 0.60):
+            # Rearm only after significant recovery to avoid repeatedly extending risk-off windows.
+            self.hard_stop_armed = False
 
         in_risk_off = self.time < self.risk_off_until
 
@@ -548,6 +554,11 @@ class RegimeEnsembleAlpha(QCAlgorithm):
         targets = {}
 
         if positives:
+            alpha_vals = np.array([a for _, _, a in positives], dtype=float)
+            q_floor = float(np.quantile(alpha_vals, min(0.95, max(0.0, self.alpha_quantile_floor))))
+            positives = [(t, s, a) for t, s, a in positives if a >= q_floor]
+
+        if positives:
             positives.sort(key=lambda x: x[2], reverse=True)
             top_n = int(self.get_parameter("top_n") or 6)
             selected = positives[:max(1, top_n)]
@@ -568,8 +579,16 @@ class RegimeEnsembleAlpha(QCAlgorithm):
                     w = (blend / blend_sum) * target_exposure
                     targets[sym] = min(self.max_weight, max(0.0, w))
 
-        # Defensive fallback / floor.
-        def_syms = [self.symbols[t] for t in self.def_assets if t in available]
+        # Defensive fallback / floor (only include defensive assets with positive short trend).
+        def_syms = []
+        for t in self.def_assets:
+            if t not in available:
+                continue
+            s = self.symbols[t]
+            px = float(self.securities[s].price)
+            s20 = float(self.sma20[s].current.value)
+            if px > s20:
+                def_syms.append(s)
         if (not targets) and def_syms:
             eq = min(0.30, target_exposure)
             each = eq / len(def_syms)
@@ -615,7 +634,7 @@ class RegimeEnsembleAlpha(QCAlgorithm):
         self.debug(
             f"rebalance regime={regime} dd={drawdown:.2%} vol={realized_vol:.2%} "
             f"target_exposure={target_exposure:.2f} symbols={len(available)} holdings={len(targets)} "
-            f"risk_off={in_risk_off}"
+            f"risk_off={in_risk_off} hard_stop_armed={self.hard_stop_armed}"
         )
 
     def on_end_of_algorithm(self):
