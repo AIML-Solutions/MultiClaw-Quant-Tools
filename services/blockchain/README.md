@@ -12,15 +12,41 @@ This lane handles Solidity smart contracts, token/transaction tracing, and chain
 - `hardhat/` — Solidity dev environment
 - `contracts/` — audited or research contract sources
 - `scripts/` — deployment/testing scripts
-- `analysis/` — token flow + transaction notebooks/scripts
+- `analysis/` — token flow + transaction tracing scripts
+
+## New tracing & contract tooling
+
+### Ethereum tx trace
+```bash
+python3 services/blockchain/analysis/trace_eth_tx.py 0x<txhash>
+# optional: --rpc <url> --out trace_eth.json
+```
+
+### Bitcoin tx trace (UTXO flow)
+```bash
+python3 services/blockchain/analysis/trace_btc_tx.py <txid> --depth 1
+# optional: --out trace_btc.json
+```
+
+### Solidity static risk scan
+```bash
+python3 services/blockchain/analysis/scan_solidity_contract.py \
+  services/blockchain/hardhat/contracts/Greeter.sol
+```
+
+### Hardhat contract introspection
+```bash
+cd services/blockchain/hardhat
+npm run introspect -- Greeter
+```
 
 ## Suggested free/open-source tooling
 - Hardhat + ethers.js
 - Foundry (optional)
-- The Graph (self-hosted where applicable)
-- Open-source chain indexers / public RPC providers (free tier)
+- Public JSON-RPC endpoints for exploratory tracing
+- Self-hosted archival node for deep traces (`debug_traceTransaction`) in production
 
-## Immediate next steps
-1. Initialize Hardhat project in `hardhat/`.
-2. Add contract template + local test.
-3. Add first chain-tracing script (ERC20 transfer graph extraction).
+## Security notes
+- Public RPC endpoints often disable `debug_*` methods; treat that as expected.
+- Never paste private keys in scripts, logs, or traces.
+- Use read-only providers for analysis tasks.
