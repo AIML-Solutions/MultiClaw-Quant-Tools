@@ -1,35 +1,39 @@
-# MultiClaw-Quant-Tools 📈🦞
+# MultiClaw Quant Tools
 
 [![Quant Quality Gate](https://github.com/AIML-Solutions/MultiClaw-quant-tools/actions/workflows/ci.yml/badge.svg)](https://github.com/AIML-Solutions/MultiClaw-quant-tools/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/license-MIT-22c55e.svg)](LICENSE)
 
-**MultiClaw-Quant-Tools** is AIML Solutions’ quantitative engineering lane for market data, derivatives analytics, and strategy infrastructure.
+Quant engineering stack for paper-trading strategy research, execution-model realism, and Claw-native automation workflows.
 
-## What this repo does
+## Current focus (last 3 months)
 
-- Executes LEAN backtests and strategy research workflows
-- Ingests structured market/derivatives outputs into PostgreSQL
-- Exposes query surfaces through GraphQL and JSON-RPC
-- Provides hooks for MCP-enabled agent tooling
-- Supports options/greeks analytics and scenario research
+- Regime-specialist execution rollouts across strategy sleeves
+- Nonlinear market-impact and liquidity-aware sizing controls
+- Validation discipline upgrades (walk-forward and stress-first workflow)
+- Claw-integrated repo operations and automation cadence
 
-## Current implementation highlights
+## What this repository does
 
-- LEAN authenticated with baseline backtest validated
-- Postgres + Hasura + Qdrant stack operational
-- Backtest summary ingestion to Postgres verified
-- GraphQL query path verified
-- Market-hours and data-source mapping documented
+- Runs LEAN strategy research and backtest workflows
+- Maintains options/greeks and statarb strategy implementations
+- Provides ingestion + query surfaces (GraphQL/JSON-RPC scaffolds)
+- Supports operational docs and runbooks for repeatable quant workflows
 
-## Key documents
+## Strategy lanes
 
-- [docs/architecture.md](docs/architecture.md)
-- [docs/runbook.md](docs/runbook.md)
-- [docs/data-sources-and-market-hours.md](docs/data-sources-and-market-hours.md)
-- [docs/DATA_PIPELINE_SPEC.md](docs/DATA_PIPELINE_SPEC.md)
-- [docs/OPTIONS_GREEKS_PLAYBOOK.md](docs/OPTIONS_GREEKS_PLAYBOOK.md)
-- [docs/graphql-examples.md](docs/graphql-examples.md)
-- [docs/ROADMAP.md](docs/ROADMAP.md)
+- `lean-cli/baseline-strategy/` — trend sleeve foundation
+- `lean-cli/regime-ensemble-alpha/` — allocator with regime controls
+- `lean-cli/statarb-spread-engine/` — spread mean-reversion engine
+- `lean-cli/options-greeks-vix/` — options/volatility execution lane
+- `lean-cli/anchored-vwap-sleeve/` — cross-asset AVWAP sleeve
+
+## Core docs
+
+- `lean-cli/ALGO_SYSTEM_ROADMAP.md`
+- `docs/architecture.md`
+- `docs/runbook.md`
+- `docs/graphql-examples.md`
+- `docs/ROADMAP.md`
 
 ## Quick start
 
@@ -38,31 +42,30 @@
 lean login
 lean whoami
 
-# bring up infra
+# infra bootstrap
 cd infra
 cp .env.example .env
 docker compose up -d
 
-# run baseline local backtest
+# run a local smoke backtest
 cd ../lean-cli
 lean backtest "baseline-strategy" --no-update
 ```
 
-## Directory map
+## Standards
 
-- `lean-cli/` — LEAN projects + generated backtests
-- `lean/` — setup + ingestion scripts
-- `infra/` — compose + schema bootstrap
-- `services/validation/` — Pydantic models
-- `services/rpc/` — JSON-RPC scaffold
-- `services/mcp/` — MCP integration notes
-- `services/options-greeks/` — pricing framework notes
-- `services/blockchain/` — cross-lane chain analytics bridge
+Every strategy change should pass this gate:
+1. design rationale
+2. code implementation
+3. structural validation
+4. stress-aware performance checks
 
-## Contributing
+## Security & usage
 
-See [CONTRIBUTING.md](CONTRIBUTING.md).
+- Paper-trading/research use only
+- Never commit secrets
+- Review external integrations before enabling write permissions
 
 ## License
 
-MIT — see [LICENSE](LICENSE).
+MIT — see `LICENSE`.
