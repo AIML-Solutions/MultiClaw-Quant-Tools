@@ -14,6 +14,7 @@ infra/.env
 # LEAN heavy data/artifacts
 lean-cli/data/
 lean-cli/backtests/
+lean-cli/**/backtests/
 lean-cli/.cache/
 lean/data/
 lean/logs/
